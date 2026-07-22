@@ -4,9 +4,10 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
 export async function GET(request: NextRequest) {
-  const { searchParams, origin } = new URL(request.url)
+  const { searchParams } = new URL(request.url)
   const code = searchParams.get("code")
   const next = searchParams.get("next") ?? "/chat"
+  const origin = process.env.NEXT_PUBLIC_APP_URL || `https://${request.headers.get("host")}`
 
   if (code) {
     const cookieStore = await cookies()
