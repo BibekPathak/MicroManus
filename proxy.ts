@@ -5,13 +5,14 @@ import type { NextRequest } from "next/server"
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  const publicPaths = ["/login", "/auth/callback"]
+  const publicPaths = ["/login"]
   const isPublic = publicPaths.some((p) => pathname.startsWith(p))
   const isApi = pathname.startsWith("/api")
   const isStatic = pathname.startsWith("/_next") || pathname.startsWith("/favicon")
+  const isCallback = pathname.startsWith("/auth/callback")
 
   // Don't touch cookies on callback — client-side exchange needs them intact
-  if (pathname.startsWith("/auth/callback")) {
+  if (isCallback) {
     return NextResponse.next()
   }
 
