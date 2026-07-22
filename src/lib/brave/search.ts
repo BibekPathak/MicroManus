@@ -1,72 +1,63 @@
-const BRAVE_API_URL = "https://api.search.brave.com/res/v1/web/search"
+const TAVILY_API_URL = "https://api.tavily.com/search"
 
-export interface BraveSearchResult {
+export interface TavilySearchResult {
   title: string
   url: string
-  description: string
+  content: string
 }
 
-export async function braveSearch(query: string): Promise<BraveSearchResult[]> {
-  const apiKey = process.env.BRAVE_API_KEY
+export async function tavilySearch(query: string): Promise<{
+  results: TavilySearchResult[]
+  answer: string | null
+}> {
+  const apiKey = process.env.TAVILY_API_KEY
   if (!apiKey) {
-    throw new Error("BRAVE_API_KEY is not set")
+    throw new Error("TAVILY_API_KEY is not set")
   }
 
-  const res = await fetch(`${BRAVE_API_URL}?q=${encodeURIComponent(query)}&count=5`, {
+  const res = await fetch(TAVILY_API_URL, {
+    method: "POST",
     headers: {
-      "Accept": "application/json",
-      "Accept-Encoding": "gzip",
-      "X-Subscription-Token": apiKey,
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`,
     },
+    body: JSON.stringify({
+      query,
+      search_depth: "advanced",
+      max_results: 5,
+      include_answer: "advanced",
+      include_raw_content: false,
+    }),
   })
 
   if (!res.ok) {
-    throw new Error(`Brave search failed: ${res.statusText}`)
+    const err = await res.text()
+    throw new Error(`Tavily search failed: ${res.status} ${err}`)
   }
 
   const data = await res.json()
-  return (data.web?.results || []).map((r: any) => ({
-    title: r.title,
-    url: r.url,
-    description: r.description,
-  }))
-}
-
-export async function fetchPageContent(url: string): Promise<string> {
-  try {
-    const res = await fetch(url, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; MicroManus/1.0)",
-      },
-      signal: AbortSignal.timeout(10000),
-    })
-
-    if (!res.ok) return ""
-
-    const html = await res.text()
-    const text = html
-      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
-      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
-      .replace(/<[^>]+>/g, " ")
-      .replace(/\s+/g, " ")
-      .trim()
-      .slice(0, 8000)
-
-    return text
-  } catch {
-    return ""
+  return {
+    results: (data.results || []).map((r: any) => ({
+      title: r.title,
+      url: r.url,
+      content: r.content,
+    })),
+    answer: data.answer || null,
   }
 }
 
 export async function searchAndSummarize(query: string): Promise<string> {
-  const results = await braveSearch(query)
+  const { results, answer } = await tavilySearch(query)
 
-  const summaries = await Promise.all(
-    results.slice(0, 3).map(async (r) => {
-      const content = await fetchPageContent(r.url)
-      return `Title: ${r.title}\nURL: ${r.url}\nSnippet: ${r.description}\nContent: ${content.slice(0, 2000)}`
-    })
-  )
+  let output = ""
+  if (answer) {
+    output += `Summary: ${answer}\n\n`
+  }
 
-  return summaries.join("\n\n---\n\n")
+  output += "Sources:\n"
+  for (const r of results) {
+    output += `- ${r.title} (${r.url}): ${r.content.slice(0, 1000)}\n`
+  }
+
+  return output
 }
