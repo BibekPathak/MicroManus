@@ -14,21 +14,35 @@ export default function AuthCallbackPage() {
       const { searchParams } = new URL(window.location.href)
       const code = searchParams.get("code")
 
-      if (code) {
-        const { error } = await supabase.auth.exchangeCodeForSession(code)
-        if (error) {
-          router.push(`/login?error=${encodeURIComponent(error.message)}`)
-          return
-        }
+      if (!code) {
+        router.push("/login?error=no_code")
+        return
       }
 
-      // Check if session was established
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        router.push("/chat")
-      } else {
-        router.push("/login?error=session_not_found")
+      const { error } = await supabase.auth.exchangeCodeForSession(code)
+      if (error) {
+        router.push(`/login?error=${encodeURIComponent(error.message)}`)
+        return
       }
+
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        router.push("/login?error=no_session")
+        return
+      }
+
+      // Sync session to server-side cookies so the proxy can read them
+      await fetch("/api/auth/set-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          access_token: session.access_token,
+          refresh_token: session.refresh_token,
+        }),
+      })
+
+      // Hard navigation so the proxy picks up the new cookies
+      window.location.href = "/chat"
     }
 
     handleCallback()
