@@ -15,10 +15,20 @@ export default function AuthCallbackPage() {
       const code = searchParams.get("code")
 
       if (code) {
-        await supabase.auth.exchangeCodeForSession(code)
+        const { error } = await supabase.auth.exchangeCodeForSession(code)
+        if (error) {
+          router.push(`/login?error=${encodeURIComponent(error.message)}`)
+          return
+        }
       }
 
-      router.push("/chat")
+      // Check if session was established
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        router.push("/chat")
+      } else {
+        router.push("/login?error=session_not_found")
+      }
     }
 
     handleCallback()
