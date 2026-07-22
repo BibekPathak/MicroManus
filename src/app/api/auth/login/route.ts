@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
   const provider = searchParams.get("provider") || "google"
   const origin = process.env.NEXT_PUBLIC_APP_URL || `https://${request.headers.get("host")}`
 
-  const response = NextResponse.json({})
+  const pendingCookies: Array<{ name: string; value: string; options: Record<string, unknown> }> = []
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -19,13 +19,7 @@ export async function GET(request: NextRequest) {
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value, options }) => {
-            response.cookies.set(name, value, {
-              path: "/",
-              sameSite: "lax",
-              httpOnly: false,
-              secure: true,
-              ...options,
-            })
+            pendingCookies.push({ name, value, options: options || {} })
           })
         },
       },
@@ -40,8 +34,19 @@ export async function GET(request: NextRequest) {
   })
 
   if (error || !data.url) {
-    return NextResponse.json({ error: error?.message || "Failed to start OAuth" }, { status: 500 })
+    return NextResponse.redirect(`${origin}/login?error=oauth_failed`)
   }
 
-  return NextResponse.json({ url: data.url })
+  const response = NextResponse.redirect(data.url)
+  pendingCookies.forEach(({ name, value, options }) => {
+    response.cookies.set(name, value, {
+      path: "/",
+      sameSite: "lax",
+      httpOnly: false,
+      secure: true,
+      ...options,
+    })
+  })
+
+  return response
 }
