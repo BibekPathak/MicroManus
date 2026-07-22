@@ -5,18 +5,11 @@ import type { NextRequest } from "next/server"
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  const publicPaths = ["/login"]
-  const isPublic = publicPaths.some((p) => pathname.startsWith(p))
   const isApi = pathname.startsWith("/api")
   const isStatic = pathname.startsWith("/_next") || pathname.startsWith("/favicon")
   const isCallback = pathname.startsWith("/auth/callback")
 
-  // Don't touch cookies on callback — client-side exchange needs them intact
-  if (isCallback) {
-    return NextResponse.next()
-  }
-
-  if (isStatic || isApi) {
+  if (isStatic || isApi || isCallback) {
     return NextResponse.next()
   }
 
@@ -45,19 +38,22 @@ export async function proxy(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
+  const isLogin = pathname === "/login"
+  const isPublic = isLogin
+
   if (!user && !isPublic) {
     const url = request.nextUrl.clone()
     url.pathname = "/login"
     return NextResponse.redirect(url)
   }
 
-  if (user && isPublic && pathname === "/login") {
+  if (user && isLogin) {
     const url = request.nextUrl.clone()
     url.pathname = "/chat"
     return NextResponse.redirect(url)
   }
 
-  if (user && !isPublic && pathname.startsWith("/chat")) {
+  if (user && pathname.startsWith("/chat")) {
     const { data: transactions } = await supabase
       .from("credit_transactions")
       .select("amount")

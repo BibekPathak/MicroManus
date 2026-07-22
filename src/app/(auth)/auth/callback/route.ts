@@ -17,17 +17,15 @@ export async function GET(request: NextRequest) {
       {
         cookies: {
           getAll() {
-            // Return ALL cookies from the request, including the PKCE verifier
-            const all = request.cookies.getAll()
-            return all
+            return request.cookies.getAll()
           },
           setAll(cookiesToSet) {
             cookiesToSet.forEach(({ name, value, options }) => {
               response.cookies.set(name, value, {
                 ...options,
-                httpOnly: false,
-                sameSite: "lax",
                 path: "/",
+                sameSite: "lax",
+                httpOnly: false,
                 secure: true,
               })
             })
@@ -37,6 +35,7 @@ export async function GET(request: NextRequest) {
     )
 
     const { error } = await supabase.auth.exchangeCodeForSession(code)
+
     if (!error) {
       return response
     }
