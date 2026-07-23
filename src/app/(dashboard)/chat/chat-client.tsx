@@ -96,10 +96,13 @@ export default function ChatClient({ userId, initialChats }: ChatClientProps) {
       setSavedKeys(keys)
       if (keys.length > 0) {
         setApiEndpoint(keys[0].endpoint)
-        setShowApiKeyDialog(true)
+        setModel(keys[0].provider)
+        setShowApiKeyDialog(false)
       } else {
         setShowApiKeyDialog(true)
       }
+    } else {
+      setShowApiKeyDialog(true)
     }
   }
 
@@ -180,7 +183,6 @@ export default function ChatClient({ userId, initialChats }: ChatClientProps) {
     setMessages((prev) => [...prev, userMessage])
     setInput("")
     setIsLoading(true)
-    setPdfUrl(null)
 
     const chatId = currentChatId!
 
