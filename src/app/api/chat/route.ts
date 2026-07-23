@@ -1,15 +1,18 @@
 import { NextResponse } from "next/server"
-import { createAdminClient, getUserFromRequest } from "@/lib/supabase/server"
+import { auth } from "@/lib/auth"
+import { createAdminClient } from "@/lib/supabase/server"
 import { runAgent } from "@/lib/ai/agent"
 import { calculateCost } from "@/lib/pricing"
 
 export async function POST(request: Request) {
   try {
-    const supabase = createAdminClient()
-    const user = await getUserFromRequest(request)
-    if (!user) {
+    const session = await auth()
+    if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
+
+    const supabase = createAdminClient()
+    const user = session.user
 
     const { chatId, message, model, apiKey, endpoint, messageHistory } = await request.json()
 

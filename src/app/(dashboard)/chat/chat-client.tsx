@@ -3,10 +3,8 @@
 import { useState, useRef, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Card } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
 import {
   Select,
   SelectContent,
@@ -19,7 +17,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
 import { toast } from "sonner"
 import {
@@ -32,7 +29,6 @@ import {
   Brain,
   Sparkles,
 } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
 import type { Chat } from "@/types"
 
 interface Message {
@@ -64,8 +60,6 @@ const STATUS_MESSAGES: Record<string, string> = {
 }
 
 export default function ChatClient({ userId, initialChats }: ChatClientProps) {
-  const router = useRouter()
-  const supabase = createClient()
   const [chats, setChats] = useState<Chat[]>(initialChats)
   const [currentChatId, setCurrentChatId] = useState<string | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
@@ -94,16 +88,13 @@ export default function ChatClient({ userId, initialChats }: ChatClientProps) {
   }, [])
 
   async function loadSavedKeys() {
-    const { data } = await supabase
-      .from("api_keys")
-      .select("provider, endpoint")
-      .eq("user_id", userId)
-
-    if (data) {
-      setSavedKeys(data)
-      if (data.length > 0) {
-        const first = data[0]
-        setApiEndpoint(first.endpoint)
+    const res = await fetch("/api/keys")
+    if (res.ok) {
+      const data = await res.json()
+      const keys = data.keys || []
+      setSavedKeys(keys)
+      if (keys.length > 0) {
+        setApiEndpoint(keys[0].endpoint)
         setShowApiKeyDialog(true)
       } else {
         setShowApiKeyDialog(true)
@@ -112,50 +103,42 @@ export default function ChatClient({ userId, initialChats }: ChatClientProps) {
   }
 
   async function loadMessages(chatId: string) {
-    const { data } = await supabase
-      .from("messages")
-      .select("*")
-      .eq("chat_id", chatId)
-      .order("created_at", { ascending: true })
-
-    if (data) {
-      setMessages(
-        data.map((m: any) => ({
-          id: m.id,
-          role: m.role as "user" | "assistant",
-          content: m.content,
-          created_at: m.created_at,
-        }))
-      )
+    const res = await fetch("/api/chats", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: chatId, action: "messages" }),
+    })
+    if (res.ok) {
+      const data = await res.json()
+      setMessages(data.messages || [])
     }
   }
 
   async function createNewChat() {
-    const { data, error } = await supabase
-      .from("chats")
-      .insert({
-        user_id: userId,
-        title: "New Chat",
-        model,
-      })
-      .select()
-      .single()
+    const res = await fetch("/api/chats", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: "New Chat", model }),
+    })
 
-    if (error) {
+    if (res.ok) {
+      const data = await res.json()
+      setChats((prev) => [data.chat, ...prev])
+      setCurrentChatId(data.chat.id)
+      setMessages([])
+      setPdfUrl(null)
+    } else {
       toast.error("Failed to create chat")
-      return
     }
-
-    setChats((prev) => [data, ...prev])
-    setCurrentChatId(data.id)
-    setMessages([])
-    setPdfUrl(null)
   }
 
   async function deleteChat(chatId: string, e: React.MouseEvent) {
     e.stopPropagation()
-    await supabase.from("messages").delete().eq("chat_id", chatId)
-    await supabase.from("chats").delete().eq("id", chatId)
+    await fetch("/api/chats", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: chatId, action: "delete" }),
+    })
     setChats((prev) => prev.filter((c) => c.id !== chatId))
     if (currentChatId === chatId) {
       setCurrentChatId(null)
@@ -169,24 +152,8 @@ export default function ChatClient({ userId, initialChats }: ChatClientProps) {
     setPdfUrl(null)
   }
 
-  async function getApiKeyValue(provider: string): Promise<string | null> {
-    const { data } = await supabase
-      .from("api_keys")
-      .select("encrypted_key")
-      .eq("user_id", userId)
-      .eq("provider", provider)
-      .single()
-
-    if (!data) return null
-    // Decrypt on server via API
-    const res = await fetch("/api/keys/decrypt", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ keyId: data.encrypted_key }),
-    })
-    if (!res.ok) return null
-    const { key } = await res.json()
-    return key
+  async function getApiKeyValue(): Promise<string | null> {
+    return apiKey || null
   }
 
   async function handleSend() {
@@ -215,12 +182,6 @@ export default function ChatClient({ userId, initialChats }: ChatClientProps) {
     setPdfUrl(null)
 
     const chatId = currentChatId!
-
-    await supabase.from("messages").insert({
-      chat_id: chatId,
-      role: "user",
-      content: userMessage.content,
-    })
 
     setStatus("thinking")
 
@@ -259,16 +220,6 @@ export default function ChatClient({ userId, initialChats }: ChatClientProps) {
 
       setMessages((prev) => [...prev, assistantMessage])
 
-      await supabase.from("messages").insert({
-        chat_id: chatId,
-        role: "assistant",
-        content: data.response,
-        tokens_in: data.tokensIn,
-        tokens_out: data.tokensOut,
-        cache_tokens: data.cacheTokens,
-        cost: data.cost,
-      })
-
       if (data.pdfRequest) {
         setPdfUrl(`/api/pdf?chatId=${chatId}&title=${encodeURIComponent(data.pdfRequest.title)}&content=${encodeURIComponent(data.pdfRequest.content)}`)
       }
@@ -276,7 +227,6 @@ export default function ChatClient({ userId, initialChats }: ChatClientProps) {
       // Auto-generate title if first message
       if (messages.length === 0) {
         const title = input.trim().slice(0, 60) + (input.trim().length > 60 ? "..." : "")
-        await supabase.from("chats").update({ title }).eq("id", chatId)
         setChats((prev) =>
           prev.map((c) => (c.id === chatId ? { ...c, title } : c))
         )

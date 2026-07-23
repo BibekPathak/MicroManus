@@ -1,40 +1,33 @@
 "use client"
 
-import { useRouter, usePathname } from "next/navigation"
-import { createClient } from "@/lib/supabase/client"
-import { signOut } from "@/lib/auth"
+import { usePathname } from "next/navigation"
+import { signOut } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { MessageSquare, Settings, BarChart3, LogOut, Microscope } from "lucide-react"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
-import { useEffect, useState } from "react"
-import { Loader2 } from "lucide-react"
-import type { User } from "@supabase/supabase-js"
+
+interface DashboardUser {
+  id?: string
+  email?: string | null
+  name?: string | null
+  image?: string | null
+}
 
 export default function DashboardLayoutClient({
   children,
-  user: initialUser,
+  user,
 }: {
   children: React.ReactNode
-  user: User
+  user: DashboardUser
 }) {
   const pathname = usePathname()
-  const router = useRouter()
-  const [user] = useState<User | null>(initialUser)
 
   const navItems = [
     { href: "/chat", label: "Chats", icon: MessageSquare },
     { href: "/stats", label: "Stats", icon: BarChart3 },
     { href: "/settings", label: "Settings", icon: Settings },
   ]
-
-  if (!user) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    )
-  }
 
   return (
     <div className="flex h-screen">
@@ -64,16 +57,13 @@ export default function DashboardLayoutClient({
         </nav>
         <div className="p-2 border-t">
           <div className="px-3 py-2 text-xs text-muted-foreground truncate">
-            {user.email}
+      <span className="truncate">{user.email || user.name}</span>
           </div>
           <Button
             variant="ghost"
             size="sm"
             className="w-full justify-start gap-2 text-muted-foreground"
-            onClick={async () => {
-              await signOut()
-              router.push("/login")
-            }}
+            onClick={() => signOut({ callbackUrl: "/login" })}
           >
             <LogOut className="h-4 w-4" />
             Sign out

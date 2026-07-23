@@ -7,8 +7,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "sonner"
 import { Key, Trash2, Eye, EyeOff } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
-import { useUser } from "@/hooks/use-user"
 
 const PROVIDERS = [
   { value: "gpt-4o", label: "OpenAI - GPT-4o", endpoint: "https://api.openai.com/v1" },
@@ -26,7 +24,6 @@ interface SavedKey {
 }
 
 export default function SettingsPage() {
-  const supabase = createClient()
   const [savedKeys, setSavedKeys] = useState<SavedKey[]>([])
   const [provider, setProvider] = useState("gpt-4o")
   const [endpoint, setEndpoint] = useState("https://api.openai.com/v1")
@@ -39,13 +36,11 @@ export default function SettingsPage() {
   }, [])
 
   async function loadKeys() {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-    const { data } = await supabase
-      .from("api_keys")
-      .select("*")
-      .eq("user_id", user.id)
-    if (data) setSavedKeys(data)
+    const res = await fetch("/api/keys")
+    if (res.ok) {
+      const data = await res.json()
+      setSavedKeys(data.keys || [])
+    }
   }
 
   function handleProviderChange(value: string | null) {
@@ -83,12 +78,12 @@ export default function SettingsPage() {
   }
 
   async function handleDelete(keyId: string) {
-    const { error } = await supabase.from("api_keys").delete().eq("id", keyId)
-    if (error) {
-      toast.error("Failed to delete key")
-    } else {
+    const res = await fetch(`/api/keys?id=${keyId}`, { method: "DELETE" })
+    if (res.ok) {
       toast.success("API key deleted")
       setSavedKeys((prev) => prev.filter((k) => k.id !== keyId))
+    } else {
+      toast.error("Failed to delete key")
     }
   }
 
