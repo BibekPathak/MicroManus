@@ -36,6 +36,7 @@ interface Message {
   role: "user" | "assistant"
   content: string
   created_at: string
+  pdfUrl?: string
 }
 
 interface ChatClientProps {
@@ -69,7 +70,6 @@ export default function ChatClient({ userId, initialChats, defaultModel }: ChatC
   const [isLoading, setIsLoading] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
   const [model, setModel] = useState(defaultModel)
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null)
   const [showApiKeyDialog, setShowApiKeyDialog] = useState(false)
   const [apiKey, setApiKey] = useState("")
   const [apiEndpoint, setApiEndpoint] = useState("https://api.openai.com/v1")
@@ -131,7 +131,6 @@ export default function ChatClient({ userId, initialChats, defaultModel }: ChatC
       setChats((prev) => [data.chat, ...prev])
       setCurrentChatId(data.chat.id)
       setMessages([])
-      setPdfUrl(null)
     } else {
       toast.error("Failed to create chat")
     }
@@ -154,7 +153,6 @@ export default function ChatClient({ userId, initialChats, defaultModel }: ChatC
   async function selectChat(chatId: string) {
     setCurrentChatId(chatId)
     await loadMessages(chatId)
-    setPdfUrl(null)
   }
 
   async function getApiKeyValue(): Promise<string | null> {
@@ -215,18 +213,19 @@ export default function ChatClient({ userId, initialChats, defaultModel }: ChatC
 
       setStatus("writing")
 
+      const pdfUrlForMsg = data.pdfRequest
+        ? `/api/pdf?chatId=${chatId}&title=${encodeURIComponent(data.pdfRequest.title)}&content=${encodeURIComponent(data.pdfRequest.content)}`
+        : undefined
+
       const assistantMessage: Message = {
         id: crypto.randomUUID(),
         role: "assistant",
         content: data.response,
         created_at: new Date().toISOString(),
+        pdfUrl: pdfUrlForMsg,
       }
 
       setMessages((prev) => [...prev, assistantMessage])
-
-      if (data.pdfRequest) {
-        setPdfUrl(`/api/pdf?chatId=${chatId}&title=${encodeURIComponent(data.pdfRequest.title)}&content=${encodeURIComponent(data.pdfRequest.content)}`)
-      }
 
       // Auto-generate title if first message
       if (messages.length === 0) {
@@ -301,6 +300,17 @@ export default function ChatClient({ userId, initialChats, defaultModel }: ChatC
                     }`}
                   >
                     <p className="whitespace-pre-wrap text-sm">{msg.content}</p>
+                    {msg.pdfUrl && (
+                      <a
+                        href={msg.pdfUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-2 inline-flex items-center gap-2 text-sm text-primary hover:underline"
+                      >
+                        <FileText className="h-4 w-4" />
+                        Download Research Report (PDF)
+                      </a>
+                    )}
                   </div>
                 </div>
               ))}
@@ -322,20 +332,6 @@ export default function ChatClient({ userId, initialChats, defaultModel }: ChatC
 
               <div ref={messagesEndRef} />
             </div>
-
-            {/* PDF Download */}
-            {pdfUrl && (
-              <div className="px-4 py-2 border-t bg-muted/30">
-                <a
-                  href={pdfUrl}
-                  target="_blank"
-                  className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
-                >
-                  <FileText className="h-4 w-4" />
-                  Download Research Report (PDF)
-                </a>
-              </div>
-            )}
 
             {/* Input */}
             <div className="border-t p-4">
