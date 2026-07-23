@@ -14,6 +14,7 @@ const PROVIDERS = [
   { value: "claude-sonnet-4-20250514", label: "Anthropic - Claude Sonnet 4", endpoint: "https://api.anthropic.com/v1" },
   { value: "claude-haiku-3-5-20241022", label: "Anthropic - Claude Haiku 3.5", endpoint: "https://api.anthropic.com/v1" },
   { value: "kimi-k2", label: "Moonshot - Kimi K2", endpoint: "https://api.moonshot.cn/v1" },
+  { value: "deepseek/deepseek-v4-flash", label: "DeepSeek - V4 Flash (Requesty)", endpoint: "https://api.requesty.ai/v1" },
 ]
 
 interface SavedKey {

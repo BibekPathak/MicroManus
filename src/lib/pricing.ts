@@ -29,6 +29,12 @@ export const MODEL_PRICING = {
     cache: 0.00000025,
     name: "Kimi K2",
   },
+  "deepseek/deepseek-v4-flash": {
+    input: 0.0000004,
+    output: 0.0000016,
+    cache: 0.0000001,
+    name: "DeepSeek V4 Flash",
+  },
 } as const
 
 export type ModelId = keyof typeof MODEL_PRICING

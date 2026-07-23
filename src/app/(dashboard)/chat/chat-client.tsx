@@ -49,6 +49,7 @@ const SUPPORTED_MODELS = [
   { value: "claude-sonnet-4-20250514", label: "Claude Sonnet 4" },
   { value: "claude-haiku-3-5-20241022", label: "Claude Haiku 3.5" },
   { value: "kimi-k2", label: "Kimi K2" },
+  { value: "deepseek/deepseek-v4-flash", label: "DeepSeek V4 Flash" },
 ]
 
 const STATUS_MESSAGES: Record<string, string> = {
