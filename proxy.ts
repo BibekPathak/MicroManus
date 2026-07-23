@@ -39,7 +39,7 @@ export async function proxy(request: NextRequest) {
 
   if (pathname === "/login" && session.user) {
     const url = request.nextUrl.clone()
-    url.pathname = "/chat"
+    url.pathname = "/paywall"
     return NextResponse.redirect(url)
   }
 

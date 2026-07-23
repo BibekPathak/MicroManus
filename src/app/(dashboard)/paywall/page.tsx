@@ -1,19 +1,40 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { toast } from "sonner"
-import { CreditCard, Ticket } from "lucide-react"
+import { CreditCard, Ticket, Loader2 } from "lucide-react"
 
 export default function PaywallPage() {
   const router = useRouter()
   const [couponCode, setCouponCode] = useState("")
   const [loading, setLoading] = useState(false)
   const [stripeLoading, setStripeLoading] = useState(false)
+  const [checking, setChecking] = useState(true)
+
+  useEffect(() => {
+    checkExistingCredits()
+  }, [])
+
+  async function checkExistingCredits() {
+    try {
+      const res = await fetch("/api/stats", { method: "GET" })
+      if (res.ok) {
+        const data = await res.json()
+        if (data.dashboard?.creditsRemaining > 0) {
+          router.push("/chat")
+        }
+      }
+    } catch {
+      // ignore
+    } finally {
+      setChecking(false)
+    }
+  }
 
   async function handleRedeemCoupon() {
     if (!couponCode.trim()) return
