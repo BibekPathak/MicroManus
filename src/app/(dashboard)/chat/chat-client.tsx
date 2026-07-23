@@ -41,6 +41,7 @@ interface Message {
 interface ChatClientProps {
   userId: string
   initialChats: Chat[]
+  defaultModel: string
 }
 
 const SUPPORTED_MODELS = [
@@ -60,14 +61,14 @@ const STATUS_MESSAGES: Record<string, string> = {
   generating: "Generating report...",
 }
 
-export default function ChatClient({ userId, initialChats }: ChatClientProps) {
+export default function ChatClient({ userId, initialChats, defaultModel }: ChatClientProps) {
   const [chats, setChats] = useState<Chat[]>(initialChats)
   const [currentChatId, setCurrentChatId] = useState<string | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
-  const [model, setModel] = useState("gpt-4o")
+  const [model, setModel] = useState(defaultModel)
   const [pdfUrl, setPdfUrl] = useState<string | null>(null)
   const [showApiKeyDialog, setShowApiKeyDialog] = useState(false)
   const [apiKey, setApiKey] = useState("")

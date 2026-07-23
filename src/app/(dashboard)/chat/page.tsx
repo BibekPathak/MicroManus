@@ -16,5 +16,19 @@ export default async function ChatPage() {
     .order("created_at", { ascending: false })
     .limit(50)
 
-  return <ChatClient userId={session.user.id} initialChats={chats || []} />
+  const { data: keys } = await supabase
+    .from("api_keys")
+    .select("provider")
+    .eq("user_id", session.user.id)
+    .limit(1)
+
+  const defaultModel = keys?.[0]?.provider || "gpt-4o"
+
+  return (
+    <ChatClient
+      userId={session.user.id}
+      initialChats={chats || []}
+      defaultModel={defaultModel}
+    />
+  )
 }
