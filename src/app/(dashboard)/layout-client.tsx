@@ -1,28 +1,40 @@
 "use client"
 
 import { useRouter, usePathname } from "next/navigation"
+import { createClient } from "@/lib/supabase/client"
 import { signOut } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
 import { MessageSquare, Settings, BarChart3, LogOut, Microscope } from "lucide-react"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
+import { useEffect, useState } from "react"
+import { Loader2 } from "lucide-react"
 import type { User } from "@supabase/supabase-js"
 
 export default function DashboardLayoutClient({
   children,
-  user,
+  user: initialUser,
 }: {
   children: React.ReactNode
   user: User
 }) {
   const pathname = usePathname()
   const router = useRouter()
+  const [user] = useState<User | null>(initialUser)
 
   const navItems = [
     { href: "/chat", label: "Chats", icon: MessageSquare },
     { href: "/stats", label: "Stats", icon: BarChart3 },
     { href: "/settings", label: "Settings", icon: Settings },
   ]
+
+  if (!user) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
 
   return (
     <div className="flex h-screen">

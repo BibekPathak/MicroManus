@@ -1,5 +1,6 @@
-import { createServerSupabaseClient } from "@/lib/supabase/server"
+import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
+import { createAdminClient } from "@/lib/supabase/server"
 import DashboardLayoutClient from "./layout-client"
 
 export default async function DashboardLayout({
@@ -7,10 +8,17 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-  const supabase = await createServerSupabaseClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const cookieStore = await cookies()
+  const sbToken = cookieStore.get("sb-token")?.value
 
-  if (!user) {
+  if (!sbToken) {
+    redirect("/login")
+  }
+
+  const supabase = createAdminClient()
+  const { data: { user }, error } = await supabase.auth.getUser(sbToken)
+
+  if (error || !user) {
     redirect("/login")
   }
 

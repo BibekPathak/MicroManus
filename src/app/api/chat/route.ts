@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server"
-import { createServerSupabaseClient } from "@/lib/supabase/server"
+import { createAdminClient, getUserFromRequest } from "@/lib/supabase/server"
 import { runAgent } from "@/lib/ai/agent"
 import { calculateCost } from "@/lib/pricing"
 
 export async function POST(request: Request) {
   try {
-    const supabase = await createServerSupabaseClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const supabase = createAdminClient()
+    const user = await getUserFromRequest(request)
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
@@ -57,16 +57,16 @@ export async function POST(request: Request) {
       description: `Chat ${chatId} - ${model}`,
     })
 
+    // Update chat total cost
+    const { data: chatData } = await supabase
+      .from("chats")
+      .select("total_cost")
+      .eq("id", chatId)
+      .single()
+
     await supabase
       .from("chats")
-      .update({
-        total_cost: supabase.rpc("increment", {
-          x: cost,
-          row_id: chatId,
-          table_name: "chats",
-          column_name: "total_cost",
-        } as any),
-      })
+      .update({ total_cost: (chatData?.total_cost || 0) + cost })
       .eq("id", chatId)
 
     if (agentResult.pdfRequest) {

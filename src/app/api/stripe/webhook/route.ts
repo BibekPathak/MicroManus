@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { createServerSupabaseClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/server"
 import Stripe from "stripe"
 
 export async function POST(request: Request) {
@@ -31,7 +31,7 @@ export async function POST(request: Request) {
       const userId = session.metadata?.user_id
 
       if (userId) {
-        const supabase = await createServerSupabaseClient()
+        const supabase = createAdminClient()
         await supabase.from("credit_transactions").insert({
           user_id: userId,
           amount: 5,
